@@ -2,10 +2,13 @@
 
 from pyueye import ueye
 from threading import Thread
-from queue import Queue
 import timeit
-import cv2
-from time import sleep
+import cv2 as cv
+from queue import Queue
+
+
+input_q = Queue
+
 
 def get_bits_per_pixel(color_mode):
     """
@@ -88,8 +91,8 @@ class ImageData:
                                    self.mem_info.pitch,
                                    True)
 
-    def as_1d_image(self):
-        channels = int((self.bits_per_pixel) / 8)
+    def as_1d_image(self):        
+        channels = int((7 + self.bits_per_pixel) / 8)
         import numpy
         if channels > 1:
             return numpy.reshape(self.array, (self.mem_info.height, self.mem_info.width, channels))
@@ -113,47 +116,40 @@ class FrameThread(Thread):
     def __init__(self, cam, queue, views=None, copy=True):
         super(FrameThread, self).__init__()
         self.timeout = 1000
-        self.running = True
-        self.queue = queue
         self.cam = cam
-
+        self.running = True
         self.views = views
         self.copy = copy
         self.t_old = timeit.default_timer()
-        #cam.set_full_auto()
-        #self.run()
 
+        cam.set_full_auto()
+        self.input_q = queue
 
     def run(self):
-
         while self.running:
 
             img_buffer = ImageBuffer()
             ret = ueye.is_WaitForNextImage(self.cam.handle(),
-                                            self.timeout,
-                                            img_buffer.mem_ptr,
-                                            img_buffer.mem_id)
+                                           self.timeout,
+                                           img_buffer.mem_ptr,
+                                           img_buffer.mem_id)
             if ret == ueye.IS_SUCCESS:
-                self.notify(ImageData(self.cam.handle(), img_buffer), self.queue)
+                self.notify(ImageData(self.cam.handle(), img_buffer))
                 t = timeit.default_timer()
                 fps = 1/(t - self.t_old)
                 print(fps, ret)
                 self.t_old = t
-            #print("check this point")
-            sleep(5)
 
-
+            
             #break
 
-    def notify(self, image_data, input_q):                       #this function can be modified in order to manipulate data,
-        img = image_data.as_1d_image()                  #the original function simply printed bitwise signal output,
+    def notify(self, image_data):
+        image = image_data.as_1d_image()
         image_data.unlock()
-        input_q.put(img)
-
+        self.input_q.put(image)
 
 
     def stop(self):
+        self.cam.stop_video()
         self.running = False
 
-if __name__ == '__main__':
-    print("\nThis is a utility module, mot a main program")
