@@ -1,4 +1,3 @@
 # VisionSystem
 program to integrate with IDS camera
-currently in use for version control, does not work
-Use at own risk
+Backbone to vision system, can be used with IDS camera or webcam
