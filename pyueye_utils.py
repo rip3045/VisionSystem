@@ -113,7 +113,7 @@ class Rect:
 
 
 class FrameThread(Thread):
-    def __init__(self, cam, queue,  views=None, copy=True):
+    def __init__(self, cam, conn,  views=None, copy=True):
         super(FrameThread, self).__init__()
         self.timeout = 1000
         self.cam = cam
@@ -122,7 +122,8 @@ class FrameThread(Thread):
         self.copy = copy
         self.t_old = timeit.default_timer()
         self.setDaemon(daemonic=True)
-        self.queue = queue
+        #self.queue = queue
+        self.conn = conn
         cam.set_full_auto()
 
 
@@ -148,15 +149,9 @@ class FrameThread(Thread):
         image = image_data.as_1d_image()
         image_data.unlock()
         #cv.imshow('camera', image)
-        cv.waitKey(800)
-        if not self.queue:
-            pass
-        else:
-            if self.queue.full():
-                pass
-            else:
-                self.queue.put(image)
-        time.sleep(2)
+        #cv.waitKey(800)
+        self.conn.send(image)
+        time.sleep(1)
 
     def stop(self):
         self.cam.stop_video()
